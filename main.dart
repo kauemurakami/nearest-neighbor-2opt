@@ -1,5 +1,3 @@
-import 'dart:math';
-
 class Point {
   final String name;
   Point(this.name);
