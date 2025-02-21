@@ -2,15 +2,31 @@ import 'dart:math';
 
 class Point {
   final String name;
-  final double x, y;
-  Point(this.name, this.x, this.y);
+  Point(this.name);
+}
 
-  double distanceTo(Point other) {
-    return sqrt(pow(x - other.x, 2) + pow(y - other.y, 2));
+class DistanceMatrix {
+  final Map<String, Map<String, double>> distances;
+
+  DistanceMatrix(List<Point> points, List<List<double>> dist) : distances = _buildDistanceMap(points, dist);
+
+  static Map<String, Map<String, double>> _buildDistanceMap(List<Point> points, List<List<double>> dist) {
+    Map<String, Map<String, double>> map = {};
+    for (int i = 0; i < points.length; i++) {
+      map[points[i].name] = {};
+      for (int j = 0; j < points.length; j++) {
+        map[points[i].name]![points[j].name] = dist[i][j];
+      }
+    }
+    return map;
+  }
+
+  double distanceBetween(Point a, Point b) {
+    return distances[a.name]?[b.name] ?? double.infinity;
   }
 }
 
-List<Point> nearestNeighbor(List<Point> points) {
+List<Point> nearestNeighbor(List<Point> points, DistanceMatrix matrix) {
   if (points.isEmpty) return [];
 
   List<Point> route = [];
@@ -20,7 +36,8 @@ List<Point> nearestNeighbor(List<Point> points) {
   unvisited.remove(current);
 
   while (unvisited.isNotEmpty) {
-    Point next = unvisited.reduce((a, b) => current.distanceTo(a) < current.distanceTo(b) ? a : b);
+    Point next =
+        unvisited.reduce((a, b) => matrix.distanceBetween(current, a) < matrix.distanceBetween(current, b) ? a : b);
     route.add(next);
     unvisited.remove(next);
     current = next;
@@ -29,13 +46,13 @@ List<Point> nearestNeighbor(List<Point> points) {
   return route;
 }
 
-List<Point> twoOpt(List<Point> route) {
+List<Point> twoOpt(List<Point> route, DistanceMatrix matrix) {
   bool improved = true;
   while (improved) {
     improved = false;
     for (int i = 1; i < route.length - 2; i++) {
       for (int j = i + 1; j < route.length - 1; j++) {
-        if (_distanceImprovement(route, i, j)) {
+        if (_distanceImprovement(route, i, j, matrix)) {
           _reverseSegment(route, i, j);
           improved = true;
         }
@@ -45,9 +62,9 @@ List<Point> twoOpt(List<Point> route) {
   return route;
 }
 
-bool _distanceImprovement(List<Point> route, int i, int j) {
-  double before = route[i - 1].distanceTo(route[i]) + route[j].distanceTo(route[j + 1]);
-  double after = route[i - 1].distanceTo(route[j]) + route[i].distanceTo(route[j + 1]);
+bool _distanceImprovement(List<Point> route, int i, int j, DistanceMatrix matrix) {
+  double before = matrix.distanceBetween(route[i - 1], route[i]) + matrix.distanceBetween(route[j], route[j + 1]);
+  double after = matrix.distanceBetween(route[i - 1], route[j]) + matrix.distanceBetween(route[i], route[j + 1]);
   return after < before;
 }
 
@@ -62,14 +79,25 @@ void _reverseSegment(List<Point> route, int i, int j) {
 }
 
 void main() {
-  List<Point> points = [Point("A", 0, 0), Point("B", 2, 3), Point("C", 5, 1), Point("D", 6, 4), Point("E", 8, 2)];
+  List<Point> points = [Point("A"), Point("B"), Point("C"), Point("D"), Point("E")];
 
-  List<Point> initialRoute = nearestNeighbor(points);
-  List<Point> optimizedRoute = twoOpt(initialRoute);
+  // Matriz de distâncias entre os pontos
+  List<List<double>> distances = [
+    [0, 3, 10, 7, 6], // Distâncias de A
+    [3, 0, 5, 8, 4], // Distâncias de B
+    [10, 5, 0, 6, 9], // Distâncias de C
+    [7, 8, 6, 0, 2], // Distâncias de D
+    [6, 4, 9, 2, 0] // Distâncias de E
+  ];
+
+  DistanceMatrix matrix = DistanceMatrix(points, distances);
+
+  List<Point> initialRoute = nearestNeighbor(points, matrix);
+  List<Point> optimizedRoute = twoOpt(initialRoute, matrix);
 
   print("Rota inicial:");
-  initialRoute.forEach((p) => print("${p.name}: (${p.x}, ${p.y})"));
+  initialRoute.forEach((p) => print(p.name));
 
   print("\nRota otimizada:");
-  optimizedRoute.forEach((p) => print("${p.name}: (${p.x}, ${p.y})"));
+  optimizedRoute.forEach((p) => print(p.name));
 }
